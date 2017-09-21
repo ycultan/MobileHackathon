@@ -52,14 +52,24 @@ class ViewController: UIViewController, UIImagePickerControllerDelegate, UINavig
                 print("error=\(error)")
                 return
             }
-
-            if let httpStatus = response as? HTTPURLResponse, httpStatus.statusCode != 200 {
-                print("statusCode should be 200, but is \(httpStatus.statusCode)")
-                print("response = \(response)")
+            do {
+                // Try converting the JSON object to "Foundation Types" (NSDictionary, NSArray, NSString, etc.)
+                if let jsonResult = try JSONSerialization.jsonObject(with: data, options: JSONSerialization.ReadingOptions.mutableContainers) as? NSDictionary {
+                    if let results = jsonResult["responses"] as? NSArray {
+                        for keywords in results {
+                            print(keywords)
+                            // cast to dictionary for data extraction
+//                            let personDict = person as! NSDictionary
+//                            self.people.append(personDict["name"] as! String)
+                        }
+                    }
+                    DispatchQueue.main.async {
+//                        self.tableView.reloadData()
+                    }
+                }
+            } catch {
+                print("Something went wrong")
             }
-
-            let responseString = String(data: data, encoding: .utf8)
-            print("responseString = \(responseString)")
         }
         task.resume()
     }
