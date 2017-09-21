@@ -15,8 +15,55 @@ class ViewController: UIViewController, UIImagePickerControllerDelegate, UINavig
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
+    
+    }
+    
+    func resizeImage(_ imageSize: CGSize, image: UIImage) -> Data {
+        UIGraphicsBeginImageContext(imageSize)
+        image.draw(in: CGRect(x: 0, y: 0, width: imageSize.width, height: imageSize.height))
+        let newImage = UIGraphicsGetImageFromCurrentImageContext()
+        let resizedImage = UIImagePNGRepresentation(newImage!)
+        UIGraphicsEndImageContext()
+        return resizedImage!
     }
 
+    @IBAction func sendButtonPressed(_ sender: UIButton) {
+        let image =  imagePicked.image as! UIImage
+        var imageData: NSData = UIImagePNGRepresentation(image) as! NSData
+        if (imageData.length > 2097152) {
+            let oldSize: CGSize = image.size
+            let newSize: CGSize = CGSize(width: 800, height: oldSize.height / oldSize.width * 800)
+            imageData = resizeImage(newSize, image:image) as! NSData
+        }
+        let encordedImage = imageData.base64EncodedString(options: .lineLength64Characters)
+        apiCall(data: encordedImage)
+    }
+    
+    func apiCall(data: String){
+        var request = URLRequest(url: URL(string: "https://vision.googleapis.com/v1/images:annotate?key=AIzaSyDciyAbXQIb0brgRAWoNMzPQ5fv44ERHo4")!)
+        request.httpMethod = "POST"
+        let json = ["requests":[["image":["content": "\(data)" ],"features":[["type":"LABEL_DETECTION","maxResults":10]]]]]
+        var err: NSError?
+        request.httpBody = try? JSONSerialization.data(withJSONObject: json)
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.addValue("application/json", forHTTPHeaderField: "Accept")
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            guard let data = data, error == nil else {
+                print("error=\(error)")
+                return
+            }
+
+            if let httpStatus = response as? HTTPURLResponse, httpStatus.statusCode != 200 {
+                print("statusCode should be 200, but is \(httpStatus.statusCode)")
+                print("response = \(response)")
+            }
+
+            let responseString = String(data: data, encoding: .utf8)
+            print("responseString = \(responseString)")
+        }
+        task.resume()
+    }
+    
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
         // Dispose of any resources that can be recreated.
